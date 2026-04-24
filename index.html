@@ -1,0 +1,694 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Payment Routing</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0f0f12;
+    --bg2: #18181f;
+    --bg3: #22222d;
+    --border: rgba(255,255,255,0.09);
+    --text: #f0f0f8;
+    --muted: #888899;
+    --green: #34d669;
+    --amber: #fbbf24;
+    --blue: #60a5fa;
+    --red: #f87171;
+    --gray: #9ca3af;
+    --purple: #c084fc;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Syne', sans-serif;
+    padding-bottom: 60px;
+  }
+  header {
+    background: var(--bg2);
+    border-bottom: 1px solid var(--border);
+    padding: 18px 16px 14px;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+  header h1 { font-size: 17px; font-weight: 800; }
+  header p { font-size: 12px; color: var(--muted); margin-top: 2px; font-family: 'DM Mono', monospace; }
+
+  /* Tabs */
+  .tabs {
+    display: flex;
+    gap: 2px;
+    padding: 10px 12px;
+    overflow-x: auto;
+    scrollbar-width: none;
+    background: var(--bg2);
+    border-bottom: 1px solid var(--border);
+    position: sticky;
+    top: 57px;
+    z-index: 99;
+  }
+  .tabs::-webkit-scrollbar { display: none; }
+  .tab {
+    flex-shrink: 0;
+    padding: 8px 13px;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+    border: 1px solid transparent;
+    background: transparent;
+    color: var(--muted);
+    transition: all 0.15s;
+    white-space: nowrap;
+  }
+  .tab.active { border-color: var(--border); background: var(--bg3); color: var(--text); }
+
+  /* Panels */
+  .panel { display: none; padding: 14px 14px; }
+  .panel.active { display: block; }
+
+  /* Section dividers */
+  .section-title {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--muted);
+    padding: 16px 2px 8px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .section-title:first-child { padding-top: 4px; }
+  .section-title::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+
+  /* Bill row */
+  .bill {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 14px 16px;
+    margin-bottom: 8px;
+  }
+  .bill-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 10px;
+    margin-bottom: 7px;
+  }
+  .bill-name { font-size: 17px; font-weight: 700; line-height: 1.3; flex: 1; }
+  .bill-amount { font-family: 'DM Mono', monospace; font-size: 19px; font-weight: 500; flex-shrink: 0; }
+  .bill-row2 {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+  .pill {
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    font-weight: 700;
+    padding: 3px 8px;
+    border-radius: 6px;
+    white-space: nowrap;
+  }
+  .p-green { background: rgba(52,214,105,0.15); color: var(--green); }
+  .p-amber { background: rgba(251,191,36,0.15); color: var(--amber); }
+  .p-blue  { background: rgba(96,165,250,0.15); color: var(--blue); }
+  .p-red   { background: rgba(248,113,113,0.15); color: var(--red); }
+  .p-gray  { background: rgba(156,163,175,0.15); color: var(--gray); }
+
+  .earn {
+    font-family: 'DM Mono', monospace;
+    font-size: 12px;
+    color: var(--muted);
+  }
+  .earn b { color: var(--text); font-weight: 500; }
+
+  .bill-note {
+    font-size: 13px;
+    line-height: 1.55;
+    color: #aaaabb;
+    margin-top: 8px;
+    padding-top: 8px;
+    border-top: 1px solid var(--border);
+  }
+
+  /* Summary */
+  .big-box {
+    background: rgba(52,214,105,0.08);
+    border: 1px solid rgba(52,214,105,0.2);
+    border-radius: 14px;
+    text-align: center;
+    padding: 22px 16px 18px;
+    margin-bottom: 12px;
+  }
+  .big-label { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 6px; }
+  .big-val { font-family: 'DM Mono', monospace; font-size: 40px; font-weight: 500; color: var(--green); }
+  .big-sub { font-size: 13px; color: var(--muted); margin-top: 4px; }
+
+  .two-up { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px; }
+  .mini {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    text-align: center;
+    padding: 14px 10px;
+  }
+  .mini-label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 4px; }
+  .mini-val { font-family: 'DM Mono', monospace; font-size: 24px; font-weight: 500; }
+  .mini-sub { font-size: 11px; color: var(--muted); margin-top: 2px; }
+
+  .breakdown {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    overflow: hidden;
+    margin-bottom: 12px;
+  }
+  .brow {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 13px 16px;
+    border-bottom: 1px solid var(--border);
+  }
+  .brow:last-child { border-bottom: none; }
+  .brow-label { font-size: 14px; font-weight: 600; flex: 1; line-height: 1.4; padding-right: 8px; }
+  .brow-val { font-family: 'DM Mono', monospace; font-size: 15px; font-weight: 500; white-space: nowrap; }
+
+  .rule {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 14px 16px;
+    margin-bottom: 8px;
+    display: flex;
+    gap: 14px;
+  }
+  .rule-n { font-family: 'DM Mono', monospace; font-size: 17px; color: var(--amber); flex-shrink: 0; }
+  .rule-t { font-size: 14px; line-height: 1.6; color: #c8c8dc; }
+  .rule-t strong { color: var(--text); font-weight: 700; }
+
+  .faded { opacity: 0.45; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>💳 Payment Routing</h1>
+  <p>Jonathan's bills &amp; recurring spend</p>
+</header>
+
+<div class="tabs">
+  <button class="tab active" onclick="show('food',this)">🍔 Food · Drink · Shopping</button>
+  <button class="tab" onclick="show('utilities',this)">⚡ Utilities</button>
+  <button class="tab" onclick="show('auto',this)">🚗 Auto</button>
+  <button class="tab" onclick="show('housing',this)">🏠 Housing</button>
+  <button class="tab" onclick="show('subs',this)">📱 Subs</button>
+  <button class="tab" onclick="show('summary',this)">📊 Summary</button>
+</div>
+
+<!-- FOOD -->
+<div id="food" class="panel active">
+
+  <div class="section-title">Groceries</div>
+
+  <div class="bill">
+    <div class="bill-top">
+      <div class="bill-name">Groceries</div>
+      <div class="bill-amount" style="color:var(--amber)">$600</div>
+    </div>
+    <div class="bill-row2">
+      <span class="pill p-amber">Savor · 3%</span>
+      <span class="earn">earns <b>$18/mo · $216/yr</b></span>
+    </div>
+    <div class="bill-note">✅ Aldi, Hen House, Trader Joe's — all qualify. ⚠️ Walmart and Target code as general merchandise, not grocery. Those earn only 1% — use Cash+ for those.</div>
+  </div>
+
+  <div class="section-title">Eating Out</div>
+
+  <div class="bill">
+    <div class="bill-top">
+      <div class="bill-name">Restaurants &amp; Fast Food</div>
+      <div class="bill-amount" style="color:var(--amber)">$300</div>
+    </div>
+    <div class="bill-row2">
+      <span class="pill p-amber">Savor · 3%</span>
+      <span class="earn">earns <b>$9/mo · $108/yr</b></span>
+    </div>
+    <div class="bill-note">✅ Chipotle, Taco Bell, The Peanut, Papa Johns — all count as dining.</div>
+  </div>
+
+  <div class="bill">
+    <div class="bill-top">
+      <div class="bill-name">Work Snacks</div>
+      <div class="bill-amount" style="color:var(--amber)">$20</div>
+    </div>
+    <div class="bill-row2">
+      <span class="pill p-amber">Savor · 3%</span>
+      <span class="earn">earns <b>$0.60/mo · $7.20/yr</b></span>
+    </div>
+    <div class="bill-note">✅ 3% if bought at a restaurant or fast food spot. ⚠️ Drops to 1% if bought at a grocery store.</div>
+  </div>
+
+  <div class="bill">
+    <div class="bill-top">
+      <div class="bill-name">Alcohol / Liquor</div>
+      <div class="bill-amount" style="color:var(--amber)">$30</div>
+    </div>
+    <div class="bill-row2">
+      <span class="pill p-amber">Savor · 3%</span>
+      <span class="earn">earns <b>$0.90/mo · $10.80/yr</b></span>
+    </div>
+    <div class="bill-note">✅ 3% at a bar or restaurant. ⚠️ Standalone liquor store drops to 1%.</div>
+  </div>
+
+  <div class="section-title">Entertainment</div>
+
+  <div class="bill">
+    <div class="bill-top">
+      <div class="bill-name">Movies, Concerts, Sports</div>
+      <div class="bill-amount" style="color:var(--amber)">$50</div>
+    </div>
+    <div class="bill-row2">
+      <span class="pill p-amber">Savor · 3%</span>
+      <span class="earn">earns <b>$1.50/mo · $18/yr</b></span>
+    </div>
+    <div class="bill-note">✅ Qualifies when paid directly to an entertainment venue — theaters, zoos, amusement parks, concert halls.</div>
+  </div>
+
+  <div class="section-title">Household Goods</div>
+
+  <div class="bill">
+    <div class="bill-top">
+      <div class="bill-name">Target / Walmart supplies</div>
+      <div class="bill-amount" style="color:var(--blue)">$75</div>
+    </div>
+    <div class="bill-row2">
+      <span class="pill p-blue">Cash+ · 1%</span>
+      <span class="earn">earns <b>$0.75/mo · $9/yr</b></span>
+    </div>
+    <div class="bill-note">Big box stores code as general merchandise — excluded from grocery bonuses on both cards. Cash+ gets the spend toward the sign-up bonus.</div>
+  </div>
+
+  <div class="bill">
+    <div class="bill-top">
+      <div class="bill-name">Amazon</div>
+      <div class="bill-amount" style="color:var(--blue)">$75</div>
+    </div>
+    <div class="bill-row2">
+      <span class="pill p-blue">Cash+ · 1%</span>
+      <span class="earn">earns <b>$0.75/mo · $9/yr</b></span>
+    </div>
+    <div class="bill-note">No bonus category applies on either card.</div>
+  </div>
+
+</div>
+
+<!-- UTILITIES -->
+<div id="utilities" class="panel">
+
+  <div class="section-title">On Credit Card (5% Back)</div>
+
+  <div class="bill">
+    <div class="bill-top">
+      <div class="bill-name">Evergy (electric)</div>
+      <div class="bill-amount" style="color:var(--green)">$200</div>
+    </div>
+    <div class="bill-row2">
+      <span class="pill p-green">Cash+ · 5% · Home Utilities</span>
+      <span class="earn">earns <b>$10/mo · $120/yr</b></span>
+    </div>
+    <div class="bill-note">✅ No credit card fee. Qualifies directly under the Home Utilities category.</div>
+  </div>
+
+  <div class="bill">
+    <div class="bill-top">
+      <div class="bill-name">Google Fiber (internet)</div>
+      <div class="bill-amount" style="color:var(--blue)">$110</div>
+    </div>
+    <div class="bill-row2">
+      <span class="pill p-blue">Cash+ · 1%</span>
+      <span class="earn">earns <b>$1.10/mo · $13.20/yr</b></span>
+    </div>
+    <div class="bill-note">Internet service doesn't qualify under Cash+ Home Utilities — that 5% slot is already taken by Evergy. Still earns 1% toward the sign-up bonus.</div>
+  </div>
+
+  <div class="section-title">ACH Only — fees wipe out rewards</div>
+
+  <div class="bill">
+    <div class="bill-top">
+      <div class="bill-name">Kansas Gas</div>
+      <div class="bill-amount" style="color:var(--red)">$185</div>
+    </div>
+    <div class="bill-row2">
+      <span class="pill p-red">ACH</span>
+    </div>
+    <div class="bill-note">Runs through the I3P* processor, which adds a surcharge and likely doesn't code as a utility. Net loss if paid by credit card.</div>
+  </div>
+
+  <div class="bill">
+    <div class="bill-top">
+      <div class="bill-name">JoCo WW (wastewater)</div>
+      <div class="bill-amount" style="color:var(--red)">$138</div>
+    </div>
+    <div class="bill-row2">
+      <span class="pill p-red">ACH</span>
+    </div>
+    <div class="bill-note">Charges a 2% processor fee for credit card payments. That fee cancels out any reward earned.</div>
+  </div>
+
+  <div class="bill">
+    <div class="bill-top">
+      <div class="bill-name">Water One</div>
+      <div class="bill-amount" style="color:var(--red)">$76</div>
+    </div>
+    <div class="bill-row2">
+      <span class="pill p-red">ACH</span>
+    </div>
+    <div class="bill-note">Already set up on fee-free ACH through WaterOne Bills &amp; Payments. Leave it there.</div>
+  </div>
+
+  <div class="section-title">Phone</div>
+
+  <div class="bill">
+    <div class="bill-top">
+      <div class="bill-name">AT&amp;T (cell, via sister)</div>
+      <div class="bill-amount" style="color:var(--green)">$182</div>
+    </div>
+    <div class="bill-row2">
+      <span class="pill p-green">Cash+ · 5% · Cell Phone Providers</span>
+      <span class="earn">earns <b>$9.10/mo · $109/yr</b></span>
+    </div>
+    <div class="bill-note">⚠️ After the first payment posts, check Rewards History and confirm it earned 5%. Should code as MCC 4814. If it coded wrong, switch Q3 category to TV/Internet/Streaming.</div>
+  </div>
+
+</div>
+
+<!-- AUTO -->
+<div id="auto" class="panel">
+
+  <div class="section-title">Loans — ACH Only</div>
+
+  <div class="bill">
+    <div class="bill-top">
+      <div class="bill-name">Tesla loan</div>
+      <div class="bill-amount" style="color:var(--red)">$780</div>
+    </div>
+    <div class="bill-row2"><span class="pill p-red">ACH</span></div>
+    <div class="bill-note">Auto loans can't be paid by credit card — lenders don't allow it.</div>
+  </div>
+
+  <div class="bill">
+    <div class="bill-top">
+      <div class="bill-name">Altima loan</div>
+      <div class="bill-amount" style="color:var(--red)">$413</div>
+    </div>
+    <div class="bill-row2"><span class="pill p-red">ACH</span></div>
+    <div class="bill-note">Auto loans can't be paid by credit card — lenders don't allow it.</div>
+  </div>
+
+  <div class="section-title">Insurance</div>
+
+  <div class="bill">
+    <div class="bill-top">
+      <div class="bill-name">Progressive (auto insurance)</div>
+      <div class="bill-amount" style="color:var(--blue)">$188</div>
+    </div>
+    <div class="bill-row2">
+      <span class="pill p-blue">Cash+ · 1%</span>
+      <span class="earn">earns <b>$1.88/mo · $22.56/yr</b></span>
+    </div>
+    <div class="bill-note">Insurance doesn't qualify as a bonus category on either card. Cash+ gets the spend toward sign-up bonus.</div>
+  </div>
+
+  <div class="section-title">Subscriptions</div>
+
+  <div class="bill">
+    <div class="bill-top">
+      <div class="bill-name">Tesla connectivity</div>
+      <div class="bill-amount" style="color:var(--blue)">$9.99</div>
+    </div>
+    <div class="bill-row2">
+      <span class="pill p-blue">Cash+ · 1%</span>
+      <span class="earn">earns <b>$0.10/mo · $1.20/yr</b></span>
+    </div>
+    <div class="bill-note">Probably codes as auto/misc, not streaming. Don't count on Savor's 3%.</div>
+  </div>
+
+  <div class="bill">
+    <div class="bill-top">
+      <div class="bill-name">Garmin</div>
+      <div class="bill-amount" style="color:var(--blue)">$9.99</div>
+    </div>
+    <div class="bill-row2">
+      <span class="pill p-blue">Cash+ · 1%</span>
+      <span class="earn">earns <b>$0.10/mo · $1.20/yr</b></span>
+    </div>
+  </div>
+
+</div>
+
+<!-- HOUSING -->
+<div id="housing" class="panel">
+
+  <div class="section-title">Rent</div>
+
+  <div class="bill faded">
+    <div class="bill-top">
+      <div class="bill-name">Rent (via Venmo)</div>
+      <div class="bill-amount" style="color:var(--gray)">$2,875</div>
+    </div>
+    <div class="bill-row2"><span class="pill p-gray">Debit / Bank Transfer</span></div>
+    <div class="bill-note">Venmo charges 3% on credit card payments — that's ~$86/mo in fees. Even Savor's 3% rewards only breaks even, so pay by bank transfer.</div>
+  </div>
+
+  <div class="section-title">Renters Insurance</div>
+
+  <div class="bill">
+    <div class="bill-top">
+      <div class="bill-name">Assurant (renters insurance)</div>
+      <div class="bill-amount" style="color:var(--blue)">$16</div>
+    </div>
+    <div class="bill-row2">
+      <span class="pill p-blue">Cash+ · 1%</span>
+      <span class="earn">earns <b>$0.16/mo · $1.92/yr</b></span>
+    </div>
+    <div class="bill-note">Insurance doesn't qualify as a bonus category on either card.</div>
+  </div>
+
+  <div class="section-title">Investments</div>
+
+  <div class="bill">
+    <div class="bill-top">
+      <div class="bill-name">Edward Jones</div>
+      <div class="bill-amount" style="color:var(--red)">$110</div>
+    </div>
+    <div class="bill-row2"><span class="pill p-red">ACH</span></div>
+    <div class="bill-note">Investment contributions go ACH directly to the account. Credit cards not accepted.</div>
+  </div>
+
+</div>
+
+<!-- SUBSCRIPTIONS -->
+<div id="subs" class="panel">
+
+  <div class="section-title">Streaming</div>
+
+  <div class="bill">
+    <div class="bill-top">
+      <div class="bill-name">YouTube Premium</div>
+      <div class="bill-amount" style="color:var(--amber)">$30</div>
+    </div>
+    <div class="bill-row2">
+      <span class="pill p-amber">Savor · 3%</span>
+      <span class="earn">earns <b>$0.90/mo · $10.80/yr</b></span>
+    </div>
+    <div class="bill-note">✅ Qualifies as streaming alongside Netflix, Hulu, Disney+.</div>
+  </div>
+
+  <div class="section-title">Podcast / Work Tools</div>
+
+  <div class="bill">
+    <div class="bill-top">
+      <div class="bill-name">Riverside (recording)</div>
+      <div class="bill-amount" style="color:var(--blue)">$44</div>
+    </div>
+    <div class="bill-row2">
+      <span class="pill p-blue">Cash+ · 1%</span>
+      <span class="earn">earns <b>$0.44/mo · $5.28/yr</b></span>
+    </div>
+  </div>
+
+  <div class="bill">
+    <div class="bill-top">
+      <div class="bill-name">Zoom</div>
+      <div class="bill-amount" style="color:var(--blue)">$18</div>
+    </div>
+    <div class="bill-row2">
+      <span class="pill p-blue">Cash+ · 1%</span>
+      <span class="earn">earns <b>$0.18/mo · $2.16/yr</b></span>
+    </div>
+  </div>
+
+  <div class="bill">
+    <div class="bill-top">
+      <div class="bill-name">Fireside (podcast hosting)</div>
+      <div class="bill-amount" style="color:var(--blue)">$7</div>
+    </div>
+    <div class="bill-row2">
+      <span class="pill p-blue">Cash+ · 1%</span>
+      <span class="earn">earns <b>$0.07/mo · $0.84/yr</b></span>
+    </div>
+  </div>
+
+  <div class="section-title">Cloud &amp; Productivity</div>
+
+  <div class="bill">
+    <div class="bill-top">
+      <div class="bill-name">Claude</div>
+      <div class="bill-amount" style="color:var(--blue)">$20</div>
+    </div>
+    <div class="bill-row2">
+      <span class="pill p-blue">Cash+ · 1%</span>
+      <span class="earn">earns <b>$0.20/mo · $2.40/yr</b></span>
+    </div>
+  </div>
+
+  <div class="bill">
+    <div class="bill-top">
+      <div class="bill-name">Google Drive</div>
+      <div class="bill-amount" style="color:var(--blue)">$10</div>
+    </div>
+    <div class="bill-row2">
+      <span class="pill p-blue">Cash+ · 1%</span>
+      <span class="earn">earns <b>$0.10/mo · $1.20/yr</b></span>
+    </div>
+  </div>
+
+  <div class="bill">
+    <div class="bill-top">
+      <div class="bill-name">White Pages</div>
+      <div class="bill-amount" style="color:var(--blue)">$6</div>
+    </div>
+    <div class="bill-row2">
+      <span class="pill p-blue">Cash+ · 1%</span>
+      <span class="earn">earns <b>$0.06/mo · $0.72/yr</b></span>
+    </div>
+  </div>
+
+  <div class="section-title">Family</div>
+
+  <div class="bill">
+    <div class="bill-top">
+      <div class="bill-name">Greenlight (Henry's debit app)</div>
+      <div class="bill-amount" style="color:var(--blue)">$6</div>
+    </div>
+    <div class="bill-row2">
+      <span class="pill p-blue">Cash+ · 1%</span>
+      <span class="earn">earns <b>$0.06/mo · $0.72/yr</b></span>
+    </div>
+  </div>
+
+  <div class="bill">
+    <div class="bill-top">
+      <div class="bill-name">School (Finn)</div>
+      <div class="bill-amount" style="color:var(--blue)">$20</div>
+    </div>
+    <div class="bill-row2">
+      <span class="pill p-blue">Cash+ · 1%</span>
+      <span class="earn">earns <b>$0.20/mo · $2.40/yr</b></span>
+    </div>
+    <div class="bill-note">Likely 1% unless paid to a qualifying merchant type.</div>
+  </div>
+
+</div>
+
+<!-- SUMMARY -->
+<div id="summary" class="panel">
+
+  <div class="big-box">
+    <div class="big-label">First Year Total</div>
+    <div class="big-val">$1,074</div>
+    <div class="big-sub">includes both sign-up bonuses</div>
+  </div>
+
+  <div class="two-up">
+    <div class="mini">
+      <div class="mini-label">After Year 1</div>
+      <div class="mini-val" style="color:var(--green)">$674</div>
+      <div class="mini-sub">steady state / yr</div>
+    </div>
+    <div class="mini">
+      <div class="mini-label">Sign-up Bonuses</div>
+      <div class="mini-val" style="color:var(--amber)">$400</div>
+      <div class="mini-sub">first year only</div>
+    </div>
+  </div>
+
+  <div class="section-title">Breakdown</div>
+
+  <div class="breakdown">
+    <div class="brow">
+      <div class="brow-label" style="color:var(--green)">Cash+ 5% — Evergy + AT&amp;T</div>
+      <div class="brow-val" style="color:var(--green)">$229/yr</div>
+    </div>
+    <div class="brow">
+      <div class="brow-label" style="color:var(--amber)">Savor 3% — dining / grocery / streaming</div>
+      <div class="brow-val" style="color:var(--amber)">$353/yr</div>
+    </div>
+    <div class="brow">
+      <div class="brow-label" style="color:var(--blue)">1% base — subs, insurance, misc</div>
+      <div class="brow-val" style="color:var(--blue)">$92/yr</div>
+    </div>
+    <div class="brow">
+      <div class="brow-label" style="color:var(--purple)">Cash+ sign-up bonus (yr 1)</div>
+      <div class="brow-val" style="color:var(--purple)">$200</div>
+    </div>
+    <div class="brow">
+      <div class="brow-label" style="color:var(--purple)">Savor sign-up bonus (yr 1)</div>
+      <div class="brow-val" style="color:var(--purple)">$200</div>
+    </div>
+  </div>
+
+  <div class="section-title">Ground Rules</div>
+
+  <div class="rule">
+    <div class="rule-n">1</div>
+    <div class="rule-t"><strong>Autopay the full statement balance every month.</strong> At 18–28% APR, carrying one month wipes out a full year of rewards.</div>
+  </div>
+  <div class="rule">
+    <div class="rule-n">2</div>
+    <div class="rule-t"><strong>Set Cash+ Q2 categories to Home Utilities + Cell Phone Providers</strong> if not done. Takes 3 business days to activate.</div>
+  </div>
+  <div class="rule">
+    <div class="rule-n">3</div>
+    <div class="rule-t"><strong>Hit both sign-up bonuses.</strong> Cash+ needs $1,000 in 90 days — AT&amp;T + Evergy × 3 = $1,146 ✅. Savor needs $500 — one month of groceries ✅.</div>
+  </div>
+  <div class="rule">
+    <div class="rule-n">4</div>
+    <div class="rule-t"><strong>After the first AT&amp;T payment, check Rewards History and confirm 5%.</strong> If it coded wrong, switch Q3 to TV/Internet/Streaming.</div>
+  </div>
+  <div class="rule">
+    <div class="rule-n">5</div>
+    <div class="rule-t"><strong>Third-party processors</strong> (KUBRA, Invoice Cloud, I3P*, Paymentus) may not code as utility even with Home Utilities selected. Pay once and verify.</div>
+  </div>
+
+</div>
+
+<script>
+function show(id, btn) {
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  btn.classList.add('active');
+}
+</script>
+</body>
+</html>
